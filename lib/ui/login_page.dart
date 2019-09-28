@@ -1,8 +1,16 @@
+import 'dart:async';
+import 'dart:math';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:mudi_grocery_app/style/theme.dart' as Theme;
 import 'package:mudi_grocery_app/utils/bubble_indication_painter.dart';
+import 'package:mudi_grocery_app/item_view.dart';
+import 'package:flutter_facebook_login/flutter_facebook_login.dart' as F;
+import 'package:google_sign_in/google_sign_in.dart';
 
 class LoginPage extends StatefulWidget {
   LoginPage({Key key}) : super(key: key);
@@ -13,7 +21,6 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage>
     with SingleTickerProviderStateMixin {
-
   final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
 
   final FocusNode myFocusNodeEmailLogin = FocusNode();
@@ -38,6 +45,12 @@ class _LoginPageState extends State<LoginPage>
 
   PageController _pageController;
 
+  F.FacebookLogin fblogin = new F.FacebookLogin();
+
+  GoogleSignIn _googleSignIn = GoogleSignIn(scopes: [
+    'email',
+  ]);
+
   Color left = Colors.black;
   Color right = Colors.white;
 
@@ -50,70 +63,70 @@ class _LoginPageState extends State<LoginPage>
           overscroll.disallowGlow();
         },
         child: SingleChildScrollView(
-              child: Container(
-                width: MediaQuery.of(context).size.width,
-                height: MediaQuery.of(context).size.height >= 775.0
-                    ? MediaQuery.of(context).size.height
-                    : 775.0,
-                decoration: new BoxDecoration(
-                  gradient: new LinearGradient(
-                      colors: [
-                        Theme.Colors.loginGradientStart,
-                        Theme.Colors.loginGradientEnd
-                      ],
-                      begin: const FractionalOffset(0.0, 0.0),
-                      end: const FractionalOffset(1.0, 1.0),
-                      stops: [0.0, 1.0],
-                      tileMode: TileMode.clamp),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.max,
-                  children: <Widget>[
-                    Padding(
-                      padding: EdgeInsets.only(top: 75.0),
-                      child: new Image(
-                          width: 194.0,
-                          height: 102.0,
-                          fit: BoxFit.fill,
-                          image: new AssetImage('assets/img/Asset_1.png')),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.only(top: 20.0),
-                      child: _buildMenuBar(context),
-                    ),
-                    Expanded(
-                      flex: 2,
-                      child: PageView(
-                        controller: _pageController,
-                        onPageChanged: (i) {
-                          if (i == 0) {
-                            setState(() {
-                              right = Colors.white;
-                              left = Colors.black;
-                            });
-                          } else if (i == 1) {
-                            setState(() {
-                              right = Colors.black;
-                              left = Colors.white;
-                            });
-                          }
-                        },
-                        children: <Widget>[
-                          new ConstrainedBox(
-                            constraints: const BoxConstraints.expand(),
-                            child: _buildSignIn(context),
-                          ),
-                          new ConstrainedBox(
-                            constraints: const BoxConstraints.expand(),
-                            child: _buildSignUp(context),
-                          ),
-                        ],
-                      ),
-                    ),
+          child: Container(
+            width: MediaQuery.of(context).size.width,
+            height: MediaQuery.of(context).size.height >= 775.0
+                ? MediaQuery.of(context).size.height
+                : 775.0,
+            decoration: new BoxDecoration(
+              gradient: new LinearGradient(
+                  colors: [
+                    Theme.Colors.loginGradientStart,
+                    Theme.Colors.loginGradientEnd
                   ],
-                ),
-              ),
+                  begin: const FractionalOffset(0.0, 0.0),
+                  end: const FractionalOffset(1.0, 1.0),
+                  stops: [0.0, 1.0],
+                  tileMode: TileMode.clamp),
             ),
+            child: Column(
+              mainAxisSize: MainAxisSize.max,
+              children: <Widget>[
+                Padding(
+                  padding: EdgeInsets.only(top: 75.0),
+                  child: new Image(
+                      width: 194.0,
+                      height: 102.0,
+                      fit: BoxFit.fill,
+                      image: new AssetImage('assets/img/Asset_1.png')),
+                ),
+                Padding(
+                  padding: EdgeInsets.only(top: 20.0),
+                  child: _buildMenuBar(context),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: PageView(
+                    controller: _pageController,
+                    onPageChanged: (i) {
+                      if (i == 0) {
+                        setState(() {
+                          right = Colors.white;
+                          left = Colors.black;
+                        });
+                      } else if (i == 1) {
+                        setState(() {
+                          right = Colors.black;
+                          left = Colors.white;
+                        });
+                      }
+                    },
+                    children: <Widget>[
+                      new ConstrainedBox(
+                        constraints: const BoxConstraints.expand(),
+                        child: _buildSignIn(context),
+                      ),
+                      new ConstrainedBox(
+                        constraints: const BoxConstraints.expand(),
+                        child: _buildSignUp(context),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -332,15 +345,29 @@ class _LoginPageState extends State<LoginPage>
                             fontFamily: "WorkSansBold"),
                       ),
                     ),
-                    onPressed: () =>
-                        showInSnackBar("Login button pressed")),
-              ),
+                    onPressed: () => FirebaseAuth.instance
+                            .signInWithEmailAndPassword(
+                                email: loginEmailController.text,
+                                password: loginPasswordController.text)
+                            .then((onValue) {
+                          Navigator.push(
+                              context,
+                              new MaterialPageRoute(
+                                  builder: (context) => new ListPage(
+                                        title: 'Mudi',
+                                      )));
+                        }).catchError((error) {
+                          debugPrint("Error : " + error);
+                        })),
+              )
             ],
           ),
           Padding(
             padding: EdgeInsets.only(top: 10.0),
             child: FlatButton(
-                onPressed: () {},
+                onPressed: () {
+                  showInSnackBar("Not implemented!");
+                },
                 child: Text(
                   "Forgot Password?",
                   style: TextStyle(
@@ -404,7 +431,38 @@ class _LoginPageState extends State<LoginPage>
               Padding(
                 padding: EdgeInsets.only(top: 10.0, right: 40.0),
                 child: GestureDetector(
-                  onTap: () => showInSnackBar("Facebook button pressed"),
+                  onTap: () => {
+                    fblogin.logIn(['email', 'public_profile']).then((result) {
+                      switch (result.status) {
+                        case F.FacebookLoginStatus.loggedIn:
+                          FirebaseAuth.instance
+                              .signInWithFacebook(
+                                  accessToken: result.accessToken.token)
+                              .then((signedInUser) {
+                            //Navigator.pop(context);
+                            print('loging:');
+                            Navigator.push(
+                                context,
+                                new MaterialPageRoute(
+                                    builder: (context) => new ListPage(
+                                          title: 'Mudi',
+                                        )));
+                          }).catchError((e) {
+                            print(e);
+                          });
+
+                          break;
+                        case F.FacebookLoginStatus.cancelledByUser:
+                          break;
+
+                        case F.FacebookLoginStatus.error:
+                          print(result.errorMessage);
+                          break;
+                      }
+                    }).catchError((e) {
+                      print(e);
+                    })
+                  },
                   child: Container(
                     padding: const EdgeInsets.all(15.0),
                     decoration: new BoxDecoration(
@@ -421,7 +479,27 @@ class _LoginPageState extends State<LoginPage>
               Padding(
                 padding: EdgeInsets.only(top: 10.0),
                 child: GestureDetector(
-                  onTap: () => showInSnackBar("Google button pressed"),
+                  onTap: () {
+                    _googleSignIn.signIn().then((User) {
+                      User.authentication.then((token) {
+                        String _tok = token.accessToken;
+                        String _id = token.idToken;
+
+                        FirebaseAuth.instance
+                            .signInWithGoogle(idToken: _id, accessToken: _tok)
+                            .then((signedIn) {
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) =>
+                                      ListPage(title: 'Success')));
+                        });
+                      });
+                      // prefix0.Navigator.push(context, new prefix0.MaterialPageRoute(
+                      //   builder: (context) => new ListPage(title: 'Mudi',)
+                      // ));
+                    });
+                  },
                   child: Container(
                     padding: const EdgeInsets.all(15.0),
                     decoration: new BoxDecoration(
@@ -634,9 +712,38 @@ class _LoginPageState extends State<LoginPage>
                             fontFamily: "WorkSansBold"),
                       ),
                     ),
-                    onPressed: () =>
-                        showInSnackBar("SignUp button pressed")),
-              ),
+                    onPressed: () {
+                      if (signupPasswordController.text ==
+                          signupConfirmPasswordController.text) {
+                        FirebaseAuth.instance
+                            .createUserWithEmailAndPassword(
+                                email: signupEmailController.text,
+                                password: signupConfirmPasswordController.text)
+                            .then((user) {
+                          FirebaseAuth.instance
+                              .signInWithEmailAndPassword(
+                            email: signupEmailController.text,
+                            password: signupPasswordController.text,
+                          )
+                              .then((onValue) {
+                                Firestore.instance.collection("Users").document().setData(
+                                  {
+                                    'Name' : signupEmailController.text,
+                                    'ID' : onValue.uid
+                                  }
+                                );
+                                print('done');
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => new ListPage(
+                                          title: 'Mudi',
+                                        )));
+                          });
+                        });
+                      }
+                    }),
+              )
             ],
           ),
         ],
